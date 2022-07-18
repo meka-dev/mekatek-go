@@ -99,9 +99,10 @@ func GetDurationFromEnv(envkey string) time.Duration {
 //
 
 type httpBlockBuilder struct {
-	baseurl  *url.URL
-	client   *http.Client
-	proposer Proposer
+	baseurl      *url.URL
+	client       *http.Client
+	proposerAddr string
+	proposer     Proposer
 }
 
 func newHTTPBlockBuilder(
@@ -109,10 +110,16 @@ func newHTTPBlockBuilder(
 	timeout time.Duration,
 	p Proposer,
 ) (*httpBlockBuilder, error) {
+	_, _, addr, err := p.PubKey()
+	if err != nil {
+		return nil, fmt.Errorf("get proposer public key: %w", err)
+	}
+
 	return &httpBlockBuilder{
-		baseurl:  baseurl,
-		client:   &http.Client{Timeout: timeout},
-		proposer: p,
+		baseurl:      baseurl,
+		client:       &http.Client{Timeout: timeout},
+		proposerAddr: addr,
+		proposer:     p,
 	}, nil
 }
 
@@ -133,11 +140,6 @@ func (b *httpBlockBuilder) RegisterProposer(
 }
 
 func (b *httpBlockBuilder) do(ctx context.Context, path string, req, resp interface{}) error {
-	_, _, addr, err := b.proposer.PubKey()
-	if err != nil {
-		return fmt.Errorf("get public key: %w", err)
-	}
-
 	body, err := json.Marshal(req)
 	if err != nil {
 		return fmt.Errorf("marshal request: %w", err)
@@ -160,7 +162,7 @@ func (b *httpBlockBuilder) do(ctx context.Context, path string, req, resp interf
 	}
 
 	r.Header.Set("content-type", "application/json")
-	r.Header.Set("mekatek-proposer-address", addr)
+	r.Header.Set("mekatek-proposer-address", b.proposerAddr)
 	r.Header.Set("mekatek-request-signature", hex.EncodeToString(signature))
 
 	res, err := b.client.Do(r)
