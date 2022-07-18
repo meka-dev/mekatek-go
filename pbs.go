@@ -121,7 +121,7 @@ func (b *httpBlockBuilder) BuildBlock(
 	req *BuildBlockRequest,
 ) (*BuildBlockResponse, error) {
 	var resp BuildBlockResponse
-	return &resp, b.do(ctx, "", req, &resp)
+	return &resp, b.do(ctx, "/v0/build", req, &resp)
 }
 
 func (b *httpBlockBuilder) RegisterProposer(
@@ -129,7 +129,7 @@ func (b *httpBlockBuilder) RegisterProposer(
 	req *registerProposerRequest,
 ) (*registerProposerResponse, error) {
 	var resp registerProposerResponse
-	return &resp, b.do(ctx, "/proposers/register", req, &resp)
+	return &resp, b.do(ctx, "/v0/register", req, &resp)
 }
 
 func (b *httpBlockBuilder) do(ctx context.Context, path string, req, resp interface{}) error {
