@@ -15,8 +15,8 @@ import (
 )
 
 var (
-	DefaultBlockBuilderAPIRURL = &url.URL{Scheme: "https", Host: "api.mekatek.xyz"}
-	DefaultBlockBuilderTimeout = 1 * time.Second
+	defaultBlockBuilderAPIRURL = &url.URL{Scheme: "https", Host: "api.mekatek.xyz"}
+	defaultBlockBuilderTimeout = 1 * time.Second
 )
 
 type Builder interface {
@@ -58,37 +58,37 @@ func NewBuilder(
 	return bb, nil
 }
 
-func GetURIFromEnv(envkey string, def *url.URL) *url.URL {
+func GetURIFromEnv(envkey string) *url.URL {
 	s := os.Getenv(envkey)
 	if s == "" {
-		return def
+		return defaultBlockBuilderAPIRURL
 	}
 
 	if !strings.HasPrefix(s, "http") {
-		s = def.Scheme + s
+		s = defaultBlockBuilderAPIRURL.Scheme + s
 	}
 
 	u, err := url.Parse(s)
 	if err != nil {
-		return def
+		return defaultBlockBuilderAPIRURL
 	}
 
 	return &url.URL{
-		Scheme: def.Scheme, // default URL defines scheme (e.g. HTTPS)
-		Host:   u.Host,     // provided URI defines host:port
-		Path:   def.Path,   // default URL defines path
+		Scheme: defaultBlockBuilderAPIRURL.Scheme, // default URL defines scheme (e.g. HTTPS)
+		Host:   u.Host,                            // provided URI defines host:port
+		Path:   defaultBlockBuilderAPIRURL.Path,   // default URL defines path
 	}
 }
 
-func GetDurationFromEnv(envkey string, def time.Duration) time.Duration {
+func GetDurationFromEnv(envkey string) time.Duration {
 	s := os.Getenv(envkey)
 	if s == "" {
-		return def
+		return defaultBlockBuilderTimeout
 	}
 
 	d, err := time.ParseDuration(s)
 	if err != nil {
-		return def
+		return defaultBlockBuilderTimeout
 	}
 
 	return d
