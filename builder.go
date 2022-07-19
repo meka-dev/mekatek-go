@@ -203,17 +203,26 @@ type BuildBlockRequest struct {
 	Signature       []byte   `json:"signature"`
 }
 
-func (r *BuildBlockRequest) SignatureBytes() []byte {
+// BuildBlockRequestSignatureBytes returns a stable byte representation of the signable
+// fields of a BuildBlockRequest.
+func BuildBlockRequestSignatureBytes(
+	proposerAddress string,
+	chainID string,
+	height int64,
+	maxBytes int64,
+	maxGas int64,
+	txs [][]byte,
+) []byte {
 	// XXX: Changing the order or the set of fields that are signed
 	// will cause verification failures unless both the signer and verifier
 	// are updated. Tread carefully.
 	var sb bytes.Buffer
-	sb.WriteString(r.ProposerAddress)
-	sb.WriteString(r.ChainID)
-	binary.Write(&sb, binary.LittleEndian, r.Height)
-	binary.Write(&sb, binary.LittleEndian, r.MaxBytes)
-	binary.Write(&sb, binary.LittleEndian, r.MaxGas)
-	for _, tx := range r.Txs {
+	sb.WriteString(proposerAddress)
+	sb.WriteString(chainID)
+	binary.Write(&sb, binary.LittleEndian, height)
+	binary.Write(&sb, binary.LittleEndian, maxBytes)
+	binary.Write(&sb, binary.LittleEndian, maxGas)
+	for _, tx := range txs {
 		sb.Write(tx)
 	}
 	return sb.Bytes()
