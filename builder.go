@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -26,8 +25,7 @@ type Builder interface {
 
 type Proposer interface {
 	PubKey() (bytes []byte, typ, addr string, err error)
-	// TODO: Change to Sign(*BuildBlockRequest)
-	Sign(p []byte) ([]byte, error)
+	SignBuildBlockRequest(*BuildBlockRequest) error
 }
 
 func NewBuilder(
@@ -128,6 +126,7 @@ func (b *httpBlockBuilder) BuildBlock(
 	ctx context.Context,
 	req *BuildBlockRequest,
 ) (*BuildBlockResponse, error) {
+
 	var resp BuildBlockResponse
 	return &resp, b.do(ctx, "/v0/build", req, &resp)
 }
@@ -146,13 +145,6 @@ func (b *httpBlockBuilder) do(ctx context.Context, path string, req, resp interf
 		return fmt.Errorf("marshal request: %w", err)
 	}
 
-	// TODO: SECURITY 🚨 review, do we need to sign other things than the body?
-	// What about nonces (e.g. timestamp)? Are replay attacks possible or exploitable here?
-	signature, err := b.proposer.Sign(body)
-	if err != nil {
-		return fmt.Errorf("signature failed: %w", err)
-	}
-
 	u := b.baseurl
 	u.Path = path
 	uri := u.String()
@@ -163,8 +155,6 @@ func (b *httpBlockBuilder) do(ctx context.Context, path string, req, resp interf
 	}
 
 	r.Header.Set("content-type", "application/json")
-	r.Header.Set("mekatek-proposer-address", b.proposerAddr)
-	r.Header.Set("mekatek-request-signature", hex.EncodeToString(signature))
 
 	res, err := b.client.Do(r)
 	if err != nil {
