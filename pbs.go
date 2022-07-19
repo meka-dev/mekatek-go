@@ -3,6 +3,7 @@ package mekatek
 import (
 	"bytes"
 	"context"
+	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -196,9 +197,26 @@ type BuildBlockRequest struct {
 	ProposerAddress string   `json:"proposer_address"`
 	ChainID         string   `json:"chain_id"`
 	Height          int64    `json:"height"`
-	Txs             [][]byte `json:"txs"`
 	MaxBytes        int64    `json:"max_bytes"`
 	MaxGas          int64    `json:"max_gas"`
+	Txs             [][]byte `json:"txs"`
+	Signature       []byte   `json:"signature"`
+}
+
+func (r *BuildBlockRequest) SignatureBytes() []byte {
+	// XXX: Changing the order or the set of fields that are signed without
+	// will cause verification failures unless both the signer and verifier
+	// are updated. Tread carefully.
+	var sb bytes.Buffer
+	sb.WriteString(r.ProposerAddress)
+	sb.WriteString(r.ChainID)
+	binary.Write(&sb, binary.LittleEndian, r.Height)
+	binary.Write(&sb, binary.LittleEndian, r.MaxBytes)
+	binary.Write(&sb, binary.LittleEndian, r.MaxGas)
+	for _, tx := range r.Txs {
+		sb.Write(tx)
+	}
+	return sb.Bytes()
 }
 
 type BuildBlockResponse struct {
