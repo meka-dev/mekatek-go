@@ -204,7 +204,7 @@ type BuildBlockRequest struct {
 }
 
 func (r *BuildBlockRequest) SignatureBytes() []byte {
-	// XXX: Changing the order or the set of fields that are signed without
+	// XXX: Changing the order or the set of fields that are signed
 	// will cause verification failures unless both the signer and verifier
 	// are updated. Tread carefully.
 	var sb bytes.Buffer
