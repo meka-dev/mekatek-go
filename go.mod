@@ -1,3 +1,3 @@
-module github.com/meka-dev/pbs
+module github.com/meka-dev/mekatek
 
 go 1.18
