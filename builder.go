@@ -126,6 +126,9 @@ func (b *httpBlockBuilder) BuildBlock(
 	ctx context.Context,
 	req *BuildBlockRequest,
 ) (*BuildBlockResponse, error) {
+	if err := b.proposer.SignBuildBlockRequest(req); err != nil {
+		return nil, fmt.Errorf("failed to sign request: %w", err)
+	}
 
 	var resp BuildBlockResponse
 	return &resp, b.do(ctx, "/v0/build", req, &resp)
