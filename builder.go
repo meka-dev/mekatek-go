@@ -24,8 +24,9 @@ type Builder interface {
 }
 
 type Proposer interface {
-	PubKey() (bytes []byte, typ, addr string, err error)
+	Address() (string, error)
 	SignBuildBlockRequest(*BuildBlockRequest) error
+	SignRegisterChallenge(*RegisterChallenge) error
 }
 
 func NewBuilder(
@@ -35,23 +36,55 @@ func NewBuilder(
 	paymentAddr string,
 	p Proposer,
 ) (Builder, error) {
-	pubKeyBytes, pubKeyType, _, err := p.PubKey()
+	addr, err := p.Address()
 	if err != nil {
-		return nil, fmt.Errorf("get public key from validator: %w", err)
+		return nil, fmt.Errorf("get proposer address: %w", err)
 	}
 
-	bb, err := newHTTPBlockBuilder(apiURL, apiTimeout, p)
-	if err != nil {
-		return nil, fmt.Errorf("create HTTP block builder: %w", err)
+	bb := &httpBlockBuilder{
+		baseurl:      apiURL,
+		client:       &http.Client{Timeout: apiTimeout},
+		proposerAddr: addr,
+		proposer:     p,
 	}
 
-	if _, err = bb.RegisterProposer(context.Background(), &registerProposerRequest{
-		ChainID:        chainID,
-		PaymentAddress: paymentAddr,
-		PubKeyBytes:    pubKeyBytes,
-		PubKeyType:     pubKeyType,
-	}); err != nil {
+	req := &RegisterRequest{
+		ChainID:         chainID,
+		ProposerAddress: addr,
+		PaymentAddress:  paymentAddr,
+		SignedChallenge: nil,
+	}
+
+	resp, err := bb.Register(context.Background(), req)
+	if err != nil {
 		return nil, fmt.Errorf("register proposer: %w", err)
+	}
+
+	if resp.Result == "registered" {
+		return bb, nil
+	}
+
+	if resp.Result != "challenged" {
+		return nil, fmt.Errorf("unexpected register result %q", resp.Result)
+	}
+
+	if resp.Challenge == nil || len(resp.Challenge.Bytes) == 0 {
+		return nil, fmt.Errorf("empty challenge")
+	}
+
+	if err = p.SignRegisterChallenge(resp.Challenge); err != nil {
+		return nil, fmt.Errorf("sign register challenge failed: %w", err)
+	}
+
+	req.SignedChallenge = resp.Challenge
+
+	resp, err = bb.Register(context.Background(), req)
+	if err != nil {
+		return nil, fmt.Errorf("register with signed challenge failed: %w", err)
+	}
+
+	if resp.Result != "registered" {
+		return nil, fmt.Errorf("unexpected register result: want registered, got %s", resp.Result)
 	}
 
 	return bb, nil
@@ -104,24 +137,6 @@ type httpBlockBuilder struct {
 	proposer     Proposer
 }
 
-func newHTTPBlockBuilder(
-	baseurl *url.URL,
-	timeout time.Duration,
-	p Proposer,
-) (*httpBlockBuilder, error) {
-	_, _, addr, err := p.PubKey()
-	if err != nil {
-		return nil, fmt.Errorf("get proposer public key: %w", err)
-	}
-
-	return &httpBlockBuilder{
-		baseurl:      baseurl,
-		client:       &http.Client{Timeout: timeout},
-		proposerAddr: addr,
-		proposer:     p,
-	}, nil
-}
-
 func (b *httpBlockBuilder) BuildBlock(
 	ctx context.Context,
 	req *BuildBlockRequest,
@@ -134,11 +149,11 @@ func (b *httpBlockBuilder) BuildBlock(
 	return &resp, b.do(ctx, "/v0/build", req, &resp)
 }
 
-func (b *httpBlockBuilder) RegisterProposer(
+func (b *httpBlockBuilder) Register(
 	ctx context.Context,
-	req *registerProposerRequest,
-) (*registerProposerResponse, error) {
-	var resp registerProposerResponse
+	req *RegisterRequest,
+) (*RegisterResponse, error) {
+	var resp RegisterResponse
 	return &resp, b.do(ctx, "/v0/register", req, &resp)
 }
 
@@ -225,13 +240,19 @@ type BuildBlockResponse struct {
 	Txs [][]byte `json:"txs"`
 }
 
-type registerProposerRequest struct {
-	ChainID        string `json:"chain_id"`
-	PaymentAddress string `json:"payment_address"`
-	PubKeyBytes    []byte `json:"pub_key_bytes"`
-	PubKeyType     string `json:"pub_key_type"`
+type RegisterRequest struct {
+	ChainID         string             `json:"chain_id"`
+	ProposerAddress string             `json:"proposer_address"`
+	PaymentAddress  string             `json:"payment_address"`
+	SignedChallenge *RegisterChallenge `json:"signed_challenge,omitempty"`
 }
 
-type registerProposerResponse struct {
-	Result string `json:"result"`
+type RegisterResponse struct {
+	Result    string             `json:"result"`
+	Challenge *RegisterChallenge `json:"challenge,omitempty"`
+}
+
+type RegisterChallenge struct {
+	Bytes     []byte `json:"bytes"`
+	Signature []byte `json:"signature,omitempty"`
 }
