@@ -1,0 +1,31 @@
+name: test
+on: [push, pull_request]
+env:
+  GOPRIVATE: github.com/meka-dev/mekatek
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: setup-go
+        uses: actions/setup-go@v3
+        with:
+          go-version: 1.x
+      - name: checkout
+        uses: actions/checkout@v3
+      - name: cache
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/go/pkg/mod
+            ~/.cache/go-build
+          key: ${{ runner.os }}-go-${{ matrix.go-version }}-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-${{ matrix.go-version }}-
+      - name: gofmt
+        run: diff <(gofmt -d . 2>/dev/null) <(printf '')
+      - name: staticcheck
+        run: go install honnef.co/go/tools/cmd/staticcheck@latest && staticcheck ./...
+      - name: gofumpt
+        run: go install mvdan.cc/gofumpt@latest && gofumpt -d -e -l .
+      - name: go test
+        run: go test -v ./...
