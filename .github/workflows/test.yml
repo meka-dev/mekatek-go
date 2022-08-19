@@ -1,7 +1,5 @@
 name: test
 on: [push, pull_request]
-env:
-  GOPRIVATE: github.com/meka-dev/mekatek
 jobs:
   test:
     runs-on: ubuntu-latest

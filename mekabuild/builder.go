@@ -18,8 +18,8 @@ import (
 // intended to be constructed and stored in a Tendermint node, and invoked
 // whenever the validator becomes a proposer and should propose a block.
 //
-// Builders, like all types and functions in this package, are build and managed
-// in our Tendermint fork, and shouldn't need to be used directly.
+// Builders, like all types and functions in this package, are constructed and
+// managed within Tendermint, and shouldn't need to be used directly.
 type Builder struct {
 	baseurl       *url.URL
 	client        *http.Client
