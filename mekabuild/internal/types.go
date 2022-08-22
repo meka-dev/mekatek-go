@@ -1,5 +1,7 @@
 package internal
 
+// TODO: maybe make these part of package mekabuild
+
 type RegistrationRequest struct {
 	ApplyRequest
 	RegisterRequest
