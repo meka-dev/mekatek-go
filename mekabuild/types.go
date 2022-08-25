@@ -111,7 +111,7 @@ func RegisterChallengeSignableBytes(ch []byte) []byte {
 	return sb.Bytes()
 }
 
-func mustEncode(w io.Writer, v any) {
+func mustEncode(w io.Writer, v interface{}) {
 	if err := binary.Write(w, binary.LittleEndian, v); err != nil {
 		panic(fmt.Errorf("encode %T (%v): %w", v, v, err))
 	}

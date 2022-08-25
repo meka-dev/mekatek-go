@@ -1,3 +1,3 @@
 module github.com/meka-dev/mekatek-go
 
-go 1.18
+go 1.16 // tendermint/tendermint v0.34.19 uses go 1.16
