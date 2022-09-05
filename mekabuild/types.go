@@ -11,8 +11,8 @@ import (
 // Signer is a consumer contract for the Builder. It models a subset of the
 // methods provided by a Tendermint private validator.
 type Signer interface {
-	SignMekatekBuildBlockRequest(*BuildBlockRequest) error
-	SignMekatekRegisterChallenge(*RegisterChallenge) error
+	SignBuildBlockRequest(*BuildBlockRequest) error
+	SignRegisterChallenge(*RegisterChallenge) error
 }
 
 // BuildBlockRequest represents a request from a validator to the build endpoint
