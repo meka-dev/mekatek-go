@@ -89,7 +89,7 @@ func (b *Builder) Register(ctx context.Context) error {
 			Bytes:   resp.Challenge,
 		}
 
-		if err := b.signer.SignMekatekRegisterChallenge(&ch); err != nil {
+		if err := b.signer.SignRegisterChallenge(&ch); err != nil {
 			return fmt.Errorf("sign register challenge: %w", err)
 		}
 
@@ -122,7 +122,7 @@ func (b *Builder) BuildBlock(ctx context.Context, req *BuildBlockRequest) (*Buil
 		return nil, fmt.Errorf("register validator: %w", err)
 	}
 
-	if err := b.signer.SignMekatekBuildBlockRequest(req); err != nil {
+	if err := b.signer.SignBuildBlockRequest(req); err != nil {
 		return nil, fmt.Errorf("sign request: %w", err)
 	}
 

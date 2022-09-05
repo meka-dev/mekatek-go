@@ -254,7 +254,7 @@ func newMockKey(t *testing.T, addr string, rng io.Reader) *mockKey {
 	}
 }
 
-func (k *mockKey) SignMekatekBuildBlockRequest(r *mekabuild.BuildBlockRequest) error {
+func (k *mockKey) SignBuildBlockRequest(r *mekabuild.BuildBlockRequest) error {
 	msg := mekabuild.BuildBlockRequestSignBytes(
 		r.ChainID,
 		r.Height,
@@ -271,7 +271,7 @@ func (k *mockKey) SignMekatekBuildBlockRequest(r *mekabuild.BuildBlockRequest) e
 	return nil
 }
 
-func (k *mockKey) SignMekatekRegisterChallenge(c *mekabuild.RegisterChallenge) error {
+func (k *mockKey) SignRegisterChallenge(c *mekabuild.RegisterChallenge) error {
 	msg := mekabuild.RegisterChallengeSignBytes(c.ChainID, c.Bytes)
 	sig, err := k.PrivateKey.Sign(nil, msg, crypto.Hash(0))
 	if err != nil {
