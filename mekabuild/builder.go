@@ -85,7 +85,8 @@ func (b *Builder) Register(ctx context.Context) error {
 		}
 
 		ch := RegisterChallenge{
-			Bytes: resp.Challenge,
+			ChainID: b.chainID,
+			Bytes:   resp.Challenge,
 		}
 
 		if err := b.signer.SignMekatekRegisterChallenge(&ch); err != nil {

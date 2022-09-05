@@ -150,7 +150,7 @@ func (a *mockAPI) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				http.Error(w, fmt.Sprintf("no public key for %q", challenge.validator.id()), http.StatusBadRequest)
 				return
 			}
-			msg := mekabuild.RegisterChallengeSignableBytes(challenge.challenge)
+			msg := mekabuild.RegisterChallengeSignBytes(challenge.validator.chainID, challenge.challenge)
 			if !verify(publicKey, msg, req.Signature) {
 				http.Error(w, "bad signature", http.StatusBadRequest)
 				return
@@ -173,7 +173,14 @@ func (a *mockAPI) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, fmt.Sprintf("no public key for %q", id), http.StatusBadRequest)
 			return
 		}
-		msg := req.SignableBytes()
+		msg := mekabuild.BuildBlockRequestSignBytes(
+			req.ChainID,
+			req.Height,
+			req.ValidatorAddress,
+			req.MaxBytes,
+			req.MaxGas,
+			req.TxsHash(),
+		)
 		if !verify(publicKey, msg, req.Signature) {
 			http.Error(w, "bad signature", http.StatusBadRequest)
 			return
@@ -248,7 +255,14 @@ func newMockKey(t *testing.T, addr string, rng io.Reader) *mockKey {
 }
 
 func (k *mockKey) SignMekatekBuildBlockRequest(r *mekabuild.BuildBlockRequest) error {
-	msg := r.SignableBytes()
+	msg := mekabuild.BuildBlockRequestSignBytes(
+		r.ChainID,
+		r.Height,
+		r.ValidatorAddress,
+		r.MaxBytes,
+		r.MaxGas,
+		r.TxsHash(),
+	)
 	sig, err := k.PrivateKey.Sign(nil, msg, crypto.Hash(0))
 	if err != nil {
 		return err
@@ -258,7 +272,7 @@ func (k *mockKey) SignMekatekBuildBlockRequest(r *mekabuild.BuildBlockRequest) e
 }
 
 func (k *mockKey) SignMekatekRegisterChallenge(c *mekabuild.RegisterChallenge) error {
-	msg := c.SignableBytes()
+	msg := mekabuild.RegisterChallengeSignBytes(c.ChainID, c.Bytes)
 	sig, err := k.PrivateKey.Sign(nil, msg, crypto.Hash(0))
 	if err != nil {
 		return err

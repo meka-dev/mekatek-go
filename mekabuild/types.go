@@ -2,6 +2,7 @@ package mekabuild
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"encoding/binary"
 	"fmt"
 	"io"
@@ -17,7 +18,7 @@ type Signer interface {
 // BuildBlockRequest represents a request from a validator to the build endpoint
 // of the builder API. In order to meet the pattern used by other signable types
 // in Tendermint, it contains a Signature field that needs to be set by callers.
-// See SignBytes for more detail.
+// See BuildBlockRequestSignBytes for more detail.
 type BuildBlockRequest struct {
 	ChainID          string   `json:"chain_id"`
 	Height           int64    `json:"height"`
@@ -27,6 +28,15 @@ type BuildBlockRequest struct {
 	Txs              [][]byte `json:"txs"`
 
 	Signature []byte `json:"signature"`
+}
+
+// TxsHash returns the sha256 sum of all txs in the request. Pass this to BuildBlockRequestSignBytes txsHash argument.
+func (r *BuildBlockRequest) TxsHash() []byte {
+	h := sha256.New()
+	for _, tx := range r.Txs {
+		h.Write(tx)
+	}
+	return h.Sum(nil)
 }
 
 // BuildBlockRequestSignBytes returns a stable byte representation of a
@@ -67,8 +77,9 @@ type BuildBlockResponse struct {
 // RegisterChallenge is used by the builder API during registration to establish
 // the identity of the registering validator. In order to meet the pattern used
 // by other signable types in Tendermint, it contains a Signature field that
-// needs to be set by callers. See SignBytes for more detail.
+// needs to be set by callers. See RegisterChallengeSignBytes for more detail.
 type RegisterChallenge struct {
+	ChainID   string `json:"chain_id"`
 	Bytes     []byte `json:"bytes"`
 	Signature []byte `json:"signature,omitempty"`
 }
