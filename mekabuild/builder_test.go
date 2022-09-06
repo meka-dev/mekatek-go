@@ -179,7 +179,7 @@ func (a *mockAPI) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			req.ValidatorAddress,
 			req.MaxBytes,
 			req.MaxGas,
-			req.TxsHash(),
+			mekabuild.HashTxs(req.Txs),
 		)
 		if !verify(publicKey, msg, req.Signature) {
 			http.Error(w, "bad signature", http.StatusBadRequest)
@@ -261,7 +261,7 @@ func (k *mockKey) SignBuildBlockRequest(r *mekabuild.BuildBlockRequest) error {
 		r.ValidatorAddress,
 		r.MaxBytes,
 		r.MaxGas,
-		r.TxsHash(),
+		mekabuild.HashTxs(r.Txs),
 	)
 	sig, err := k.PrivateKey.Sign(nil, msg, crypto.Hash(0))
 	if err != nil {

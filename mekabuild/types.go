@@ -30,10 +30,10 @@ type BuildBlockRequest struct {
 	Signature []byte `json:"signature"`
 }
 
-// TxsHash returns the sha256 sum of all txs in the request. Pass this to BuildBlockRequestSignBytes txsHash argument.
-func (r *BuildBlockRequest) TxsHash() []byte {
+// HashTxs returns the sha256 sum of all txs in the request. Pass this to BuildBlockRequestSignBytes txsHash argument.
+func HashTxs(txs [][]byte) []byte {
 	h := sha256.New()
-	for _, tx := range r.Txs {
+	for _, tx := range txs {
 		h.Write(tx)
 	}
 	return h.Sum(nil)
