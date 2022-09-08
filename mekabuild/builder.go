@@ -147,16 +147,12 @@ func (b *Builder) do(ctx context.Context, path string, req, resp interface{}) er
 	u.Path = path
 	uri := u.String()
 
+	compress := !b.disableCompression.Load()
+
 	pr, pw := io.Pipe()
 	go func() {
-		switch b.disableCompression.Load() {
-		case true: // don't compress, usually for tests
-			enc := json.NewEncoder(pw)
-			if err := enc.Encode(req); err != nil {
-				pw.CloseWithError(err)
-				return
-			}
-		default: // compress, normal path
+		switch {
+		case compress: // normal path
 			zw := gzip.NewWriter(pw)
 			enc := json.NewEncoder(zw)
 			if err := enc.Encode(req); err != nil {
@@ -164,6 +160,13 @@ func (b *Builder) do(ctx context.Context, path string, req, resp interface{}) er
 				return
 			}
 			if err := zw.Flush(); err != nil {
+				pw.CloseWithError(err)
+				return
+			}
+
+		case !compress: // usually for tests
+			enc := json.NewEncoder(pw)
+			if err := enc.Encode(req); err != nil {
 				pw.CloseWithError(err)
 				return
 			}
@@ -177,7 +180,10 @@ func (b *Builder) do(ctx context.Context, path string, req, resp interface{}) er
 	}
 
 	r.Header.Set("content-type", "application/json")
-	r.Header.Set("content-encoding", "gzip")
+
+	if compress {
+		r.Header.Set("content-encoding", "gzip")
+	}
 
 	res, err := b.client.Do(r)
 	if err != nil {
