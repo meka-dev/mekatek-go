@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/url"
 	"sync"
+	"sync/atomic"
 
 	"github.com/meka-dev/mekatek-go/mekabuild/internal"
 )
@@ -29,6 +30,8 @@ type Builder struct {
 
 	mu         sync.Mutex
 	registered bool
+
+	disableCompression atomic.Bool
 }
 
 // NewBuilder returns a usable builder which has not yet registered with the
@@ -51,6 +54,12 @@ func NewBuilder(cli *http.Client, apiURL *url.URL, s Signer, chainID, validatorA
 		validatorAddr: validatorAddr,
 		paymentAddr:   paymentAddr,
 	}
+}
+
+// SetCompression enables or disables compression of HTTP request data from the
+// builder client to the builder API. By default, compression is enabled.
+func (b *Builder) SetCompression(enabled bool) {
+	b.disableCompression.Store(!enabled)
 }
 
 // Register the validator, as defined by the parmaeters passed to the
@@ -140,15 +149,24 @@ func (b *Builder) do(ctx context.Context, path string, req, resp interface{}) er
 
 	pr, pw := io.Pipe()
 	go func() {
-		zw := gzip.NewWriter(pw)
-		enc := json.NewEncoder(zw)
-		if err := enc.Encode(req); err != nil {
-			pw.CloseWithError(err)
-			return
-		}
-		if err := zw.Flush(); err != nil {
-			pw.CloseWithError(err)
-			return
+		switch b.disableCompression.Load() {
+		case true: // don't compress, usually for tests
+			enc := json.NewEncoder(pw)
+			if err := enc.Encode(req); err != nil {
+				pw.CloseWithError(err)
+				return
+			}
+		default: // compress, normal path
+			zw := gzip.NewWriter(pw)
+			enc := json.NewEncoder(zw)
+			if err := enc.Encode(req); err != nil {
+				pw.CloseWithError(err)
+				return
+			}
+			if err := zw.Flush(); err != nil {
+				pw.CloseWithError(err)
+				return
+			}
 		}
 		pw.Close()
 	}()
