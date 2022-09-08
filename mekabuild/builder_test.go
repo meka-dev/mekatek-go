@@ -128,7 +128,10 @@ func (a *mockAPI) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	switch r.URL.Path {
 	case "/v0/register":
 		var req internal.RegistrationRequest
-		json.NewDecoder(r.Body).Decode(&req)
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, fmt.Errorf("decode request: %w", err).Error(), http.StatusBadRequest)
+			return
+		}
 		isApply := req.ChallengeID == ""
 		isRegister := !isApply
 		switch {
@@ -161,7 +164,10 @@ func (a *mockAPI) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	case "/v0/build":
 		var req mekabuild.BuildBlockRequest
-		json.NewDecoder(r.Body).Decode(&req)
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, fmt.Errorf("decode request: %w", err).Error(), http.StatusBadRequest)
+			return
+		}
 		id := makeID(req.ChainID, req.ValidatorAddress)
 		_, ok := a.validators[id]
 		if !ok {
@@ -201,7 +207,7 @@ func (a *mockAPI) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 func newTestServer(t *testing.T, h http.Handler) *httptest.Server {
 	t.Helper()
-	server := httptest.NewServer(h)
+	server := httptest.NewServer(mekabuild.GunzipRequestMiddleware(h))
 	t.Cleanup(server.Close)
 	return server
 }

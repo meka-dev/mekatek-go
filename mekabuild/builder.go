@@ -140,8 +140,17 @@ func (b *Builder) do(ctx context.Context, path string, req, resp interface{}) er
 
 	pr, pw := io.Pipe()
 	go func() {
-		enc := json.NewEncoder(gzip.NewWriter(pw))
-		pw.CloseWithError(enc.Encode(req))
+		zw := gzip.NewWriter(pw)
+		enc := json.NewEncoder(zw)
+		if err := enc.Encode(req); err != nil {
+			pw.CloseWithError(err)
+			return
+		}
+		if err := zw.Flush(); err != nil {
+			pw.CloseWithError(err)
+			return
+		}
+		pw.Close()
 	}()
 
 	r, err := http.NewRequestWithContext(ctx, "POST", uri, pr)
