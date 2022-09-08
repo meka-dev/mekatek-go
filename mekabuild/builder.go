@@ -1,14 +1,13 @@
 package mekabuild
 
 import (
-	"bytes"
+	"compress/gzip"
 	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	"net/url"
-	"strings"
 	"sync"
 
 	"github.com/meka-dev/mekatek-go/mekabuild/internal"
@@ -135,21 +134,32 @@ func (b *Builder) BuildBlock(ctx context.Context, req *BuildBlockRequest) (*Buil
 }
 
 func (b *Builder) do(ctx context.Context, path string, req, resp interface{}) error {
-	body, err := json.Marshal(req)
-	if err != nil {
-		return fmt.Errorf("marshal request: %w", err)
-	}
-
 	u := b.baseurl
 	u.Path = path
 	uri := u.String()
 
-	r, err := http.NewRequestWithContext(ctx, "POST", uri, bytes.NewReader(body))
+	pr, pw := io.Pipe()
+	go func() {
+		zw := gzip.NewWriter(pw)
+		enc := json.NewEncoder(zw)
+		if err := enc.Encode(req); err != nil {
+			pw.CloseWithError(err)
+			return
+		}
+		if err := zw.Flush(); err != nil {
+			pw.CloseWithError(err)
+			return
+		}
+		pw.Close()
+	}()
+
+	r, err := http.NewRequestWithContext(ctx, "POST", uri, pr)
 	if err != nil {
 		return fmt.Errorf("create request: %w", err)
 	}
 
 	r.Header.Set("content-type", "application/json")
+	r.Header.Set("content-encoding", "gzip")
 
 	res, err := b.client.Do(r)
 	if err != nil {
@@ -158,16 +168,19 @@ func (b *Builder) do(ctx context.Context, path string, req, resp interface{}) er
 
 	defer res.Body.Close()
 
-	body, err = io.ReadAll(res.Body)
-	if err != nil {
-		return fmt.Errorf("read response: %w", err)
-	}
-
 	if res.StatusCode != http.StatusOK {
-		return fmt.Errorf("response code %d (%s)", res.StatusCode, strings.TrimSpace(string(body)))
+		var resp struct {
+			Error string `json:"error"`
+		}
+
+		if err := json.NewDecoder(res.Body).Decode(&resp); err != nil {
+			resp.Error = fmt.Errorf("unmarshal error: %w", err).Error()
+		}
+
+		return fmt.Errorf("response code %d (%s)", res.StatusCode, resp.Error)
 	}
 
-	if err = json.Unmarshal(body, resp); err != nil {
+	if err := json.NewDecoder(res.Body).Decode(resp); err != nil {
 		return fmt.Errorf("unmarshal response: %w", err)
 	}
 
