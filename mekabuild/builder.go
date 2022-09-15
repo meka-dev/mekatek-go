@@ -31,7 +31,7 @@ type Builder struct {
 	mu         sync.Mutex
 	registered bool
 
-	disableCompression atomic.Bool
+	disableCompression int32 // atomic
 }
 
 // NewBuilder returns a usable builder which has not yet registered with the
@@ -59,7 +59,11 @@ func NewBuilder(cli *http.Client, apiURL *url.URL, s Signer, chainID, validatorA
 // SetCompression enables or disables compression of HTTP request data from the
 // builder client to the builder API. By default, compression is enabled.
 func (b *Builder) SetCompression(enabled bool) {
-	b.disableCompression.Store(!enabled)
+	if enabled {
+		atomic.StoreInt32(&b.disableCompression, 0)
+	} else {
+		atomic.StoreInt32(&b.disableCompression, 1)
+	}
 }
 
 // Register the validator, as defined by the parmaeters passed to the
@@ -147,7 +151,7 @@ func (b *Builder) do(ctx context.Context, path string, req, resp interface{}) er
 	u.Path = path
 	uri := u.String()
 
-	compress := !b.disableCompression.Load()
+	compress := atomic.LoadInt32(&b.disableCompression) != 0
 
 	pr, pw := io.Pipe()
 	go func() {
