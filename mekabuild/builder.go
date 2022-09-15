@@ -27,7 +27,6 @@ type Builder struct {
 	chainID       string
 	validatorAddr string
 	paymentAddr   string
-	tmVersion     string
 
 	mu         sync.Mutex
 	registered bool
@@ -46,7 +45,7 @@ type Builder struct {
 // as represented on chain, which is normally uppercase hex encoded. The payment
 // address should be a valid Bech32 encoded address that can be used as a
 // recipient in bank send transactions.
-func NewBuilder(cli *http.Client, apiURL *url.URL, s Signer, chainID, validatorAddr, paymentAddr, tmVersion string) *Builder {
+func NewBuilder(cli *http.Client, apiURL *url.URL, s Signer, chainID, validatorAddr, paymentAddr string) *Builder {
 	return &Builder{
 		baseurl:       apiURL,
 		client:        cli,
@@ -54,7 +53,6 @@ func NewBuilder(cli *http.Client, apiURL *url.URL, s Signer, chainID, validatorA
 		chainID:       chainID,
 		validatorAddr: validatorAddr,
 		paymentAddr:   paymentAddr,
-		tmVersion:     tmVersion,
 	}
 }
 
@@ -186,7 +184,6 @@ func (b *Builder) do(ctx context.Context, path string, req, resp interface{}) er
 	}
 
 	r.Header.Set("content-type", "application/json")
-	r.Header.Set("user-agent", "Mekatek Tendermint "+b.tmVersion)
 
 	if compress {
 		r.Header.Set("content-encoding", "gzip")
