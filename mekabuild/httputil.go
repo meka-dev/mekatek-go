@@ -23,3 +23,21 @@ func GunzipRequestMiddleware(h http.Handler) http.Handler {
 		h.ServeHTTP(w, r)
 	})
 }
+
+// UserAgentDecorator sets the given User-Agent header on outgoing requests.
+// It's intended to decorate the HTTP client provided to the builder.
+func UserAgentDecorator(userAgent string) func(http.RoundTripper) http.RoundTripper {
+	return func(rt http.RoundTripper) http.RoundTripper {
+		return &userAgentDecorator{RoundTripper: rt, userAgent: userAgent}
+	}
+}
+
+type userAgentDecorator struct {
+	http.RoundTripper
+	userAgent string
+}
+
+func (d *userAgentDecorator) RoundTrip(req *http.Request) (*http.Response, error) {
+	req.Header.Set("user-agent", d.userAgent)
+	return d.RoundTripper.RoundTrip(req)
+}
