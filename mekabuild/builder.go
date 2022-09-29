@@ -184,6 +184,7 @@ func (b *Builder) do(ctx context.Context, path string, req, resp interface{}) er
 	}
 
 	r.Header.Set("content-type", "application/json")
+	r.Header.Set("zenith-chain-id", b.chainID)
 
 	if compress {
 		r.Header.Set("content-encoding", "gzip")
