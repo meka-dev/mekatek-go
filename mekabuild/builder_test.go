@@ -28,12 +28,11 @@ func TestBuilderBuild(t *testing.T) {
 		apiURL, _     = url.Parse(server.URL)
 		signer        = keyBar
 		validatorAddr = keyBar.addr
-		paymentAddr   = "some-payment-addr"
 	)
 
 	api.addPublicKey(chainID, keyBar.addr, keyBar.PublicKey)
 
-	builder := mekabuild.NewBuilder(client, apiURL, signer, chainID, validatorAddr, paymentAddr)
+	builder := mekabuild.NewBuilder(client, apiURL, signer, chainID, validatorAddr)
 	resp, err := builder.BuildBlock(ctx, &mekabuild.BuildBlockRequest{
 		ChainID:          chainID,
 		Height:           10,
