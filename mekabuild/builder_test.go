@@ -60,14 +60,12 @@ func TestBuilderBuild(t *testing.T) {
 
 type mockAPI struct {
 	publicKeys map[string][]byte
-	challenges map[string]*mockChallenge
 	validators map[string]*mockValidator
 }
 
 func newMockAPI() *mockAPI {
 	return &mockAPI{
 		publicKeys: map[string][]byte{},
-		challenges: map[string]*mockChallenge{},
 		validators: map[string]*mockValidator{},
 	}
 }
@@ -132,19 +130,9 @@ func makeID(chainID, addr string) string {
 	return chainID + ":" + addr
 }
 
-type mockChallenge struct {
-	challengeID string
-	challenge   []byte
-	validator   *mockValidator
-}
-
 type mockValidator struct {
 	chainID       string
 	validatorAddr string
-}
-
-func (v *mockValidator) id() string {
-	return makeID(v.chainID, v.validatorAddr)
 }
 
 type mockKey struct {
