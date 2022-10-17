@@ -5,7 +5,6 @@ import (
 	"crypto"
 	"crypto/ed25519"
 	"crypto/rand"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -15,48 +14,7 @@ import (
 	"testing"
 
 	"github.com/meka-dev/mekatek-go/mekabuild"
-	"github.com/meka-dev/mekatek-go/mekabuild/internal"
 )
-
-func TestBuilderRegister(t *testing.T) {
-	var (
-		ctx           = context.Background()
-		rng           = rand.Reader
-		chainID       = "my-chain-id"
-		keyFoo        = newMockKey(t, "foo", rng)
-		api           = newMockAPI()
-		server        = newTestServer(t, api)
-		client        = &http.Client{}
-		apiURL, _     = url.Parse(server.URL)
-		signer        = keyFoo
-		validatorAddr = keyFoo.addr
-		paymentAddr   = "my-payment-addr"
-	)
-
-	api.addPublicKey(chainID, keyFoo.addr, keyFoo.PublicKey)
-
-	builder := mekabuild.NewBuilder(client, apiURL, signer, chainID, validatorAddr, paymentAddr)
-	if api.isRegistered(chainID, keyFoo.addr) {
-		t.Errorf("registered before registration?")
-	}
-
-	if err := builder.Register(ctx); err != nil {
-		t.Errorf("registration failed: %v", err)
-	}
-
-	if !api.isRegistered(chainID, keyFoo.addr) {
-		t.Errorf("registration didn't seem to take effect")
-	}
-
-	if err := builder.Register(ctx); err != nil {
-		t.Errorf("re-registration gave error: %v", err)
-	}
-
-	badBuilder := mekabuild.NewBuilder(client, apiURL, signer, chainID, "xyz", paymentAddr)
-	if err := badBuilder.Register(ctx); err == nil {
-		t.Errorf("registration of unknown validator incorrectly succeeded")
-	}
-}
 
 func TestBuilderBuild(t *testing.T) {
 	var (
@@ -119,66 +77,22 @@ func (a *mockAPI) addPublicKey(chainID, addr string, publicKey []byte) {
 	a.publicKeys[makeID(chainID, addr)] = publicKey
 }
 
-func (a *mockAPI) isRegistered(chainID, addr string) bool {
-	_, ok := a.validators[makeID(chainID, addr)]
-	return ok
-}
-
 func (a *mockAPI) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	switch r.URL.Path {
-	case "/v0/register":
-		var req internal.RegistrationRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			http.Error(w, fmt.Errorf("decode request: %w", err).Error(), http.StatusBadRequest)
-			return
-		}
-		isApply := req.ChallengeID == ""
-		isRegister := !isApply
-		switch {
-		case isApply:
-			validator := &mockValidator{chainID: req.ApplyRequest.ChainID, validatorAddr: req.ApplyRequest.ValidatorAddress, paymentAddr: req.ApplyRequest.PaymentAddress}
-			challenge := &mockChallenge{challengeID: hex.EncodeToString(randomBytes(16)), challenge: randomBytes(10), validator: validator}
-			a.challenges[challenge.challengeID] = challenge
-			json.NewEncoder(w).Encode(internal.ApplyResponse{ChallengeID: challenge.challengeID, Challenge: challenge.challenge})
-
-		case isRegister:
-			challenge, ok := a.challenges[req.RegisterRequest.ChallengeID]
-			if !ok {
-				http.Error(w, "no such challenge ID", http.StatusBadRequest)
-				return
-			}
-			delete(a.challenges, req.RegisterRequest.ChallengeID)
-			publicKey, ok := a.publicKeys[challenge.validator.id()]
-			if !ok {
-				http.Error(w, fmt.Sprintf("no public key for %q", challenge.validator.id()), http.StatusBadRequest)
-				return
-			}
-			msg := mekabuild.RegisterChallengeSignBytes(challenge.validator.chainID, challenge.challenge)
-			if !verify(publicKey, msg, req.Signature) {
-				http.Error(w, "bad signature", http.StatusBadRequest)
-				return
-			}
-			a.validators[challenge.validator.id()] = challenge.validator
-			json.NewEncoder(w).Encode(internal.RegisterResponse{Result: "success"})
-		}
-
 	case "/v0/build":
 		var req mekabuild.BuildBlockRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			http.Error(w, fmt.Errorf("decode request: %w", err).Error(), http.StatusBadRequest)
 			return
 		}
+
 		id := makeID(req.ChainID, req.ValidatorAddress)
-		_, ok := a.validators[id]
-		if !ok {
-			http.Error(w, fmt.Sprintf("unknown validator %s", id), http.StatusBadRequest)
-			return
-		}
 		publicKey, ok := a.publicKeys[id]
 		if !ok {
-			http.Error(w, fmt.Sprintf("no public key for %q", id), http.StatusBadRequest)
+			http.Error(w, "validator not in valset", http.StatusBadRequest)
 			return
 		}
+
 		msg := mekabuild.BuildBlockRequestSignBytes(
 			req.ChainID,
 			req.Height,
@@ -191,6 +105,9 @@ func (a *mockAPI) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "bad signature", http.StatusBadRequest)
 			return
 		}
+
+		a.validators[id] = &mockValidator{chainID: req.ChainID, validatorAddr: req.ValidatorAddress}
+
 		json.NewEncoder(w).Encode(mekabuild.BuildBlockResponse{
 			Txs:              req.Txs,
 			ValidatorPayment: fmt.Sprintf("%d %s coins", len(req.Txs), req.ChainID),
@@ -225,20 +142,10 @@ type mockChallenge struct {
 type mockValidator struct {
 	chainID       string
 	validatorAddr string
-	paymentAddr   string
 }
 
 func (v *mockValidator) id() string {
 	return makeID(v.chainID, v.validatorAddr)
-}
-
-func randomBytes(n int) []byte {
-	msg := make([]byte, n)
-	_, err := rand.Read(msg)
-	if err != nil {
-		panic(fmt.Errorf("rand.Read: %v", err))
-	}
-	return msg
 }
 
 type mockKey struct {
