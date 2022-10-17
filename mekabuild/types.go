@@ -12,7 +12,6 @@ import (
 // methods provided by a Tendermint private validator.
 type Signer interface {
 	SignBuildBlockRequest(*BuildBlockRequest) error
-	SignRegisterChallenge(*RegisterChallenge) error
 }
 
 // BuildBlockRequest represents a request from a validator to the build endpoint
@@ -69,40 +68,6 @@ func BuildBlockRequestSignBytes(chainID string, height int64, validatorAddr stri
 type BuildBlockResponse struct {
 	Txs              [][]byte `json:"txs"`
 	ValidatorPayment string   `json:"validator_payment,omitempty"`
-}
-
-//
-//
-//
-
-// RegisterChallenge is used by the builder API during registration to establish
-// the identity of the registering validator. In order to meet the pattern used
-// by other signable types in Tendermint, it contains a Signature field that
-// needs to be set by callers. See RegisterChallengeSignBytes for more detail.
-type RegisterChallenge struct {
-	ChainID   string `json:"chain_id"`
-	Bytes     []byte `json:"bytes"`
-	Signature []byte `json:"signature,omitempty"`
-}
-
-// RegisterChallengeSignBytes returns a stable byte representation of the
-// RegisterChallenge represented by the provided parameters.
-func RegisterChallengeSignBytes(chainID string, challenge []byte) []byte {
-	// XXX: Changing the order or the set of fields that are signed will cause
-	// verification failures unless both the signer and verifier are updated.
-	// Tread carefully.
-
-	// SECURITY 🚨 We prefix the signable bytes with a constant so that in an
-	// unauthenticated remote signer deployment an internal actor can't sign
-	// arbitrary bytes with an RPC.
-
-	var sb bytes.Buffer
-	mustEncode(&sb, []byte(`register-challenge`))
-	mustEncode(&sb, uint64(len(chainID)))
-	mustEncode(&sb, []byte(chainID))
-	mustEncode(&sb, uint64(len(challenge)))
-	mustEncode(&sb, challenge)
-	return sb.Bytes()
 }
 
 func mustEncode(w io.Writer, v interface{}) {

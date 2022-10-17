@@ -184,16 +184,6 @@ func (k *mockKey) SignBuildBlockRequest(r *mekabuild.BuildBlockRequest) error {
 	return nil
 }
 
-func (k *mockKey) SignRegisterChallenge(c *mekabuild.RegisterChallenge) error {
-	msg := mekabuild.RegisterChallengeSignBytes(c.ChainID, c.Bytes)
-	sig, err := k.PrivateKey.Sign(nil, msg, crypto.Hash(0))
-	if err != nil {
-		return err
-	}
-	c.Signature = sig
-	return nil
-}
-
 func verify(publicKey, msg, sig []byte) bool {
 	return ed25519.Verify(publicKey, msg, sig)
 }
