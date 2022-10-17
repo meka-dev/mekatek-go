@@ -7,19 +7,35 @@ import (
 	"strings"
 )
 
-// DryRunMode returns true if the MEKATEK_BUILDER_API_DRY_RUN environment
-// variable is set to true. This can control behavior in the Tendermint
-// integration.
+// DryRunMode returns true if the MEKATEK_BUILDER_API_DRY_RUN or
+// ZENITH_DRY_RUN environment variable is set to true. This can control
+// behavior in the Tendermint integration.
 func DryRunMode() bool {
-	b, _ := strconv.ParseBool(os.Getenv("MEKATEK_BUILDER_API_DRY_RUN"))
-	return b
+	for _, v := range []string{
+		"ZENITH_DRY_RUN",
+		"MEKATEK_BUILDER_API_DRY_RUN",
+	} {
+		if b, err := strconv.ParseBool(os.Getenv(v)); err == nil {
+			return b
+		}
+	}
+	return false
 }
 
 // GetBuilderAPIURL returns a url.URL that points to the Mekatek builder API. If
-// necessary, it can be overridden via the MEKATEK_BUILDER_API_URL environment
-// variable.
+// necessary, it can be overridden via the MEKATEK_BUILDER_API_URL or ZENITH_API_URL
+// environment variable.
 func GetBuilderAPIURL() *url.URL {
-	s := os.Getenv("MEKATEK_BUILDER_API_URL")
+	var s string
+	for _, v := range []string{
+		"ZENITH_API_URL",
+		"MEKATEK_BUILDER_API_URL",
+	} {
+		if s = os.Getenv(v); s != "" {
+			break
+		}
+	}
+
 	if s == "" {
 		return defaultBuilderAPIURL
 	}
