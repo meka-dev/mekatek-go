@@ -23,7 +23,6 @@ type Builder struct {
 	signer        Signer
 	chainID       string
 	validatorAddr string
-	paymentAddr   string
 
 	disableCompression int32 // atomic
 }
@@ -35,17 +34,14 @@ type Builder struct {
 // the (Mekatek-patched) Tendermint private validator.
 //
 // The validator address should be the public address of the calling validator
-// as represented on chain, which is normally uppercase hex encoded. The payment
-// address should be a valid Bech32 encoded address that can be used as a
-// recipient in bank send transactions.
-func NewBuilder(cli *http.Client, apiURL *url.URL, s Signer, chainID, validatorAddr, paymentAddr string) *Builder {
+// as represented on chain, which is normally uppercase hex encoded.
+func NewBuilder(cli *http.Client, apiURL *url.URL, s Signer, chainID, validatorAddr string) *Builder {
 	return &Builder{
 		baseurl:       apiURL,
 		client:        cli,
 		signer:        s,
 		chainID:       chainID,
 		validatorAddr: validatorAddr,
-		paymentAddr:   paymentAddr,
 	}
 }
 
