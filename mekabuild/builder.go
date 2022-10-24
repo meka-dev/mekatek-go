@@ -62,7 +62,7 @@ func (b *Builder) BuildBlock(ctx context.Context, req *BuildBlockRequest) (*Buil
 	}
 
 	var resp BuildBlockResponse
-	if err := b.do(ctx, "/v0/build", req, &resp); err != nil {
+	if err := b.do(ctx, "/v1/build", req, &resp); err != nil {
 		return nil, err
 	}
 

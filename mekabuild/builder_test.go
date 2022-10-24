@@ -76,7 +76,7 @@ func (a *mockAPI) addPublicKey(chainID, addr string, publicKey []byte) {
 
 func (a *mockAPI) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	switch r.URL.Path {
-	case "/v0/build":
+	case "/v1/build":
 		var req mekabuild.BuildBlockRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			http.Error(w, fmt.Errorf("decode request: %w", err).Error(), http.StatusBadRequest)
